@@ -352,6 +352,7 @@ let sortState = {col:'variance', dir:'asc'};
 let currentPage = 1;
 const PAGE_SIZE = 50;
 
+let combinedNote = '';
 let combinedRows = [];
 let filteredCombinedRows = [];
 let combinedSortState = {col:'date', dir:'desc'};
@@ -565,7 +566,7 @@ async function loadData(){
     applyFilters();
     await combinedPromise;
 
-    statusEl.textContent = `Loaded ${rawRows.length} EAN rows across ${teamNames.length} teams.`;
+    statusEl.textContent = `Loaded ${rawRows.length} EAN rows across ${teamNames.length} teams.` + combinedNote;
     document.getElementById('lastUpdated').textContent = new Date().toLocaleString('en-IN');
     resetCountdown();
   }catch(err){
@@ -586,9 +587,12 @@ async function fetchTeamTab(tab){
   const res = await fetch(url);
   if(!res.ok) throw new Error('HTTP ' + res.status);
   const text = await res.text();
+  if(text.indexOf('{') === -1) throw new Error('not shared / tab name not found');
   const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
   const data = JSON.parse(jsonStr);
+  if(data.status === 'error') throw new Error((data.errors && data.errors[0] && (data.errors[0].detailed_message || data.errors[0].message)) || 'gviz error');
   const tabRows = data.table.rows || [];
+  console.log('[audit-dashboard] tab', tab.name, 'rows from gviz:', tabRows.length);
 
   const cellText = (cell) => {
     if(!cell) return '';
@@ -636,10 +640,18 @@ async function fetchTeamTab(tab){
 async function loadCombinedTeamTabs(){
   const results = await Promise.allSettled(TEAM_TABS.map(fetchTeamTab));
   combinedRows = [];
+  const failed = [], empty = [];
   results.forEach((r, i) => {
-    if(r.status === 'fulfilled') combinedRows.push(...r.value);
-    else console.warn('[audit-dashboard] team tab fetch failed:', TEAM_TABS[i].name, r.reason);
+    if(r.status === 'fulfilled'){
+      combinedRows.push(...r.value);
+      if(r.value.length === 0) empty.push(TEAM_TABS[i].name);
+    } else {
+      failed.push(TEAM_TABS[i].name + ' (' + (r.reason && r.reason.message || r.reason) + ')');
+      console.warn('[audit-dashboard] team tab fetch failed:', TEAM_TABS[i].name, r.reason);
+    }
   });
+  combinedNote = (failed.length ? ' Scan log fetch FAILED: ' + failed.join(', ') + '.' : '') +
+                 (empty.length ? ' No scan rows yet in: ' + empty.join(', ') + '.' : '');
 
   const teamFilterEl = document.getElementById('combinedTeamFilter');
   const prevVal = teamFilterEl.value;
