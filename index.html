@@ -180,7 +180,7 @@
 
   <div class="grid2">
     <div class="panel">
-      <div class="panel-head"><h2>Team-wise Summary Table</h2><button class="dl-btn" onclick="downloadTeamSummary()">⬇ CSV</button></div>
+      <div class="panel-head"><h2>Team-wise Summary Table</h2><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="dl-btn" onclick="downloadTeamSummary()">⬇ CSV</button><button class="dl-btn" onclick="downloadAllScanData()">⬇ All Scan Data</button></div></div>
       <div class="desc">Physical count qty + EANs touched per team</div>
       <div class="table-scroll" style="max-height:320px;">
         <table id="teamTable">
@@ -205,8 +205,8 @@
   </div>
 
   <div class="panel">
-    <div class="panel-head"><h2>Combined Team Scan Log</h2><button class="dl-btn" onclick="downloadCombinedLog()">⬇ CSV</button></div>
-    <div class="desc">All 6 team tabs merged into one raw scan log</div>
+    <div class="panel-head"><h2>Combined Team Scan Log</h2><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="dl-btn" onclick="downloadAllScanData()">⬇ All Scan Data CSV</button><button class="dl-btn" onclick="downloadCombinedLog()">⬇ Filtered CSV</button></div></div>
+    <div class="desc">All 6 team tabs merged into one raw scan log (every row, every column — download via “All Scan Data CSV”)</div>
     <div class="table-controls">
       <input type="text" id="combinedSearchBox" placeholder="Search EAN / Shelf…" oninput="applyCombinedFilters()">
       <select id="combinedTeamFilter" onchange="applyCombinedFilters()">
@@ -222,12 +222,16 @@
             <th class="sortable" onclick="sortCombinedBy('date')">Date <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('shelf')">Shelf <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('ean')">EAN <span class="arrow">↕</span></th>
+            <th class="sortable" onclick="sortCombinedBy('mfg')">MFG <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('expiryDate')">Expiry Date <span class="arrow">↕</span></th>
+            <th class="sortable" onclick="sortCombinedBy('batch')">Batch <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('caseSize')">Case Size <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('boxCount')">Box Count <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('looseQty')">Loose QTY <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('boxQty')">Box QTY <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('totalQty')">Total QTY <span class="arrow">↕</span></th>
+            <th class="sortable" onclick="sortCombinedBy('len')">LEN <span class="arrow">↕</span></th>
+            <th class="sortable" onclick="sortCombinedBy('eanMatch')">EAN Match <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('locationMismatch')">Location Mis Match <span class="arrow">↕</span></th>
           </tr>
         </thead>
@@ -607,7 +611,7 @@ async function fetchTeamTab(tab){
     return 0;
   };
 
-  let headerRowIdx = 0;
+  let headerRowIdx = -1; // -1 = header not in rows (gviz already used it as column labels) -> read from row 0
   for(let r = 0; r < tabRows.length; r++){
     const c = tabRows[r].c;
     if(c && cellText(c[0]).trim().toLowerCase() === 'date'){ headerRowIdx = r; break; }
@@ -617,13 +621,16 @@ async function fetchTeamTab(tab){
   for(let r = headerRowIdx + 1; r < tabRows.length; r++){
     const c = tabRows[r].c;
     const ean = c ? cellText(c[2]) : '';
-    if(!ean) continue;
+    const shelfTxt = c && c[1] ? cellText(c[1]) : '';
+    if(!ean && !shelfTxt) continue;
     out.push({
       team: tab.name,
       date: c[0] ? cellText(c[0]) : '',
       shelf: c[1] ? cellText(c[1]) : '',
       ean: ean,
+      mfg: c[3] ? cellText(c[3]) : '',
       expiryDate: c[4] ? cellText(c[4]) : '',
+      batch: c[5] ? cellText(c[5]) : '',
       caseSize: cellNum(c[6]),
       boxCount: cellNum(c[7]),
       looseQty: cellNum(c[8]),
@@ -662,14 +669,18 @@ async function loadCombinedTeamTabs(){
   applyCombinedFilters();
 }
 
+const SCAN_CSV_HEADERS = ['Team','Date','Shelf','EAN','MFG','Expiry Date','Batch','Case Size','Box Count','Loose QTY','Box QTY','Total QTY','LEN','EAN match','Location Mis Match'];
+const scanCsvRow = r => [r.team, r.date, r.shelf, r.ean, r.mfg, r.expiryDate, r.batch, r.caseSize, r.boxCount,
+  r.looseQty, r.boxQty, r.totalQty, r.len, r.eanMatch, r.locationMismatch];
+
+// ALL scan data from every team tab (ignores search/team filter)
+function downloadAllScanData(){
+  if(!combinedRows.length){ alert('Scan data abhi load nahi hua / sheet me scan rows nahi hain.'); return; }
+  downloadCsv('all-team-scan-data.csv', SCAN_CSV_HEADERS, combinedRows.map(scanCsvRow));
+}
+// Only the rows currently shown after search / team filter
 function downloadCombinedLog(){
-  const rows = filteredCombinedRows.map(r => [
-    r.team, r.date, r.shelf, r.ean, r.expiryDate, r.caseSize, r.boxCount,
-    r.looseQty, r.boxQty, r.totalQty, r.len, r.eanMatch, r.locationMismatch
-  ]);
-  downloadCsv('combined-team-scan-log.csv',
-    ['Team','Date','Shelf','EAN','Expiry Date','Case Size','Box Count','Loose QTY','Box QTY','Total QTY','LEN','EAN match','Location Mis Match'],
-    rows);
+  downloadCsv('combined-team-scan-log-filtered.csv', SCAN_CSV_HEADERS, filteredCombinedRows.map(scanCsvRow));
 }
 
 function downloadNotMatchSummary(){
@@ -714,12 +725,16 @@ function renderCombinedTable(){
       <td>${r.date}</td>
       <td>${r.shelf}</td>
       <td>${r.ean}</td>
+      <td>${r.mfg}</td>
       <td>${r.expiryDate}</td>
+      <td>${r.batch}</td>
       <td class="num">${fmt(r.caseSize)}</td>
       <td class="num">${fmt(r.boxCount)}</td>
       <td class="num">${fmt(r.looseQty)}</td>
       <td class="num">${fmt(r.boxQty)}</td>
       <td class="num">${fmt(r.totalQty)}</td>
+      <td>${r.len}</td>
+      <td>${r.eanMatch}</td>
       <td>${r.locationMismatch}</td>
     </tr>`).join('');
 
