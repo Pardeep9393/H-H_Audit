@@ -206,7 +206,7 @@
 
   <div class="panel">
     <div class="panel-head"><h2>Combined Team Scan Log</h2><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="dl-btn" onclick="downloadAllScanData()">⬇ All Scan Data CSV</button><button class="dl-btn" onclick="downloadCombinedLog()">⬇ Filtered CSV</button></div></div>
-    <div class="desc">All 6 team tabs merged into one raw scan log (every row, every column — download via “All Scan Data CSV”)</div>
+    <div class="desc">All 4 team tabs merged into one raw scan log (every row, every column — download via “All Scan Data CSV”)</div>
     <div class="table-controls">
       <input type="text" id="combinedSearchBox" placeholder="Search EAN / Shelf…" oninput="applyCombinedFilters()">
       <select id="combinedTeamFilter" onchange="applyCombinedFilters()">
@@ -314,16 +314,15 @@ const gvizUrl = (sheetName, extra='') =>
 const GVIZ_URL = gvizUrl(SHEET_NAME);
 const BIN_GVIZ_URL = gvizUrl(BIN_SHEET_NAME);
 
-// The 6 individual team scan-log tabs. Columns (H&H sheet has MFG + batch added):
-// A=Date, B=Shelf, C=EAN, D=MFG, E=EXPIRY DATE, F=batch, G=Case Size, H=Box Count,
+// Team scan-log tabs, fetched by GID (tab names get renamed in the sheet, gids don't).
+// Columns: A=Date, B=Shelf, C=EAN, D=MFG, E=EXPIRY DATE, F=Batch, G=Case Size, H=Box Count,
 // I=Loose QTY, J=Box QTY, K=Total QTY, L=LEN, M=EAN match, N=Location Mis Match.
+// `name` is just the label shown in the Team column — rename it to the real team/person name if you like.
 const TEAM_TABS = [
-  { name: "Jatin_Divakar" },
-  { name: "RAJ_Shivam" },
-  { name: "Jitender_H3" },
-  { name: "Jitender" },
-  { name: "Sajid&Deepanshu" },
-  { name: "Naveen" }
+  { gid: "624968207",  name: "Tab 624968207" },
+  { gid: "610601790",  name: "Tab 610601790" },
+  { gid: "2072196281", name: "Tab 2072196281" },
+  { gid: "541943012",  name: "Tab 541943012" }
 ];
 
 function colLetter(i){ let s=''; i++; while(i>0){ s=String.fromCharCode(65+((i-1)%26))+s; i=Math.floor((i-1)/26);} return s; }
@@ -587,7 +586,7 @@ async function loadData(){
 // reads every following row that has a non-empty EAN (col C) as data —
 // robust to a blank spacer row or shifted header row.
 async function fetchTeamTab(tab){
-  const url = gvizUrl(tab.name);
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${tab.gid}`;
   const res = await fetch(url);
   if(!res.ok) throw new Error('HTTP ' + res.status);
   const text = await res.text();
