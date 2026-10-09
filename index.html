@@ -218,21 +218,21 @@
       <table id="combinedTable">
         <thead>
           <tr>
-            <th class="sortable" onclick="sortCombinedBy('team')">Team <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('date')">Date <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('shelf')">Shelf <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('ean')">EAN <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('mfg')">MFG <span class="arrow">↕</span></th>
-            <th class="sortable" onclick="sortCombinedBy('expiryDate')">Expiry Date <span class="arrow">↕</span></th>
-            <th class="sortable" onclick="sortCombinedBy('batch')">Batch <span class="arrow">↕</span></th>
+            <th class="sortable" onclick="sortCombinedBy('expiryDate')">EXPIRY DATE <span class="arrow">↕</span></th>
+            <th class="sortable" onclick="sortCombinedBy('batch')">batch <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('caseSize')">Case Size <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('boxCount')">Box Count <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('looseQty')">Loose QTY <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('boxQty')">Box QTY <span class="arrow">↕</span></th>
             <th class="sortable num" onclick="sortCombinedBy('totalQty')">Total QTY <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('len')">LEN <span class="arrow">↕</span></th>
-            <th class="sortable" onclick="sortCombinedBy('eanMatch')">EAN Match <span class="arrow">↕</span></th>
+            <th class="sortable" onclick="sortCombinedBy('eanMatch')">EAN match <span class="arrow">↕</span></th>
             <th class="sortable" onclick="sortCombinedBy('locationMismatch')">Location Mis Match <span class="arrow">↕</span></th>
+            <th class="sortable" onclick="sortCombinedBy('team')">Team <span class="arrow">↕</span></th>
           </tr>
         </thead>
         <tbody id="combinedTableBody"></tbody>
@@ -668,9 +668,10 @@ async function loadCombinedTeamTabs(){
   applyCombinedFilters();
 }
 
-const SCAN_CSV_HEADERS = ['Team','Date','Shelf','EAN','MFG','Expiry Date','Batch','Case Size','Box Count','Loose QTY','Box QTY','Total QTY','LEN','EAN match','Location Mis Match'];
-const scanCsvRow = r => [r.team, r.date, r.shelf, r.ean, r.mfg, r.expiryDate, r.batch, r.caseSize, r.boxCount,
-  r.looseQty, r.boxQty, r.totalQty, r.len, r.eanMatch, r.locationMismatch];
+// Same column order/headers as the team tabs in the sheet; Team (source tab) added as the last column.
+const SCAN_CSV_HEADERS = ['Date','Shelf','EAN','MFG','EXPIRY DATE','batch','Case Size','Box Count','Loose QTY','Box QTY','Total QTY','LEN','EAN match','Location Mis Match','Team'];
+const scanCsvRow = r => [r.date, r.shelf, r.ean, r.mfg, r.expiryDate, r.batch, r.caseSize, r.boxCount,
+  r.looseQty, r.boxQty, r.totalQty, r.len, r.eanMatch, r.locationMismatch, r.team];
 
 // ALL scan data from every team tab (ignores search/team filter)
 function downloadAllScanData(){
@@ -720,7 +721,6 @@ function renderCombinedTable(){
   const pageRows = filteredCombinedRows.slice(start, start + PAGE_SIZE);
   document.getElementById('combinedTableBody').innerHTML = pageRows.map(r => `
     <tr>
-      <td>${r.team}</td>
       <td>${r.date}</td>
       <td>${r.shelf}</td>
       <td>${r.ean}</td>
@@ -735,6 +735,7 @@ function renderCombinedTable(){
       <td>${r.len}</td>
       <td>${r.eanMatch}</td>
       <td>${r.locationMismatch}</td>
+      <td>${r.team}</td>
     </tr>`).join('');
 
   document.getElementById('combinedRowCount').textContent = `${filteredCombinedRows.length} of ${combinedRows.length} rows`;
